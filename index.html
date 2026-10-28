@@ -1,0 +1,1240 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>2048 Merge Shooter</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;800;900&display=swap" rel="stylesheet">
+
+    <style>
+        * {
+            font-family: 'Outfit', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            user-select: none;
+            -webkit-user-select: none;
+            touch-action: manipulation;
+        }
+
+        body {
+            background: #0f172a;
+            color: #f8fafc;
+            overflow: hidden;
+            min-height: 100vh;
+        }
+
+        /* Glassmorphism elements */
+        .glass-panel {
+            background: rgba(30, 41, 59, 0.75);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            box-shadow: 0 20px 30px -10px rgba(0, 0, 0, 0.5);
+        }
+
+        /* Tile Neon Glows & Gradients based on Value */
+        .tile-val-2 { background: linear-gradient(135deg, #e2e8f0, #94a3b8); color: #0f172a; box-shadow: 0 0 10px rgba(226, 232, 240, 0.3); }
+        .tile-val-4 { background: linear-gradient(135deg, #a5f3fc, #06b6d4); color: #0f172a; box-shadow: 0 0 12px rgba(6, 182, 212, 0.4); }
+        .tile-val-8 { background: linear-gradient(135deg, #38bdf8, #0284c7); color: #ffffff; box-shadow: 0 0 14px rgba(2, 132, 199, 0.5); }
+        .tile-val-16 { background: linear-gradient(135deg, #818cf8, #4f46e5); color: #ffffff; box-shadow: 0 0 16px rgba(79, 70, 229, 0.6); }
+        .tile-val-32 { background: linear-gradient(135deg, #c084fc, #9333ea); color: #ffffff; box-shadow: 0 0 18px rgba(147, 51, 234, 0.6); }
+        .tile-val-64 { background: linear-gradient(135deg, #f472b6, #db2777); color: #ffffff; box-shadow: 0 0 20px rgba(219, 39, 119, 0.7); }
+        .tile-val-128 { background: linear-gradient(135deg, #fb923c, #ea580c); color: #ffffff; box-shadow: 0 0 22px rgba(234, 88, 12, 0.7); }
+        .tile-val-256 { background: linear-gradient(135deg, #facc15, #ca8a04); color: #0f172a; box-shadow: 0 0 25px rgba(202, 138, 4, 0.8); }
+        .tile-val-512 { background: linear-gradient(135deg, #4ade80, #16a34a); color: #0f172a; box-shadow: 0 0 28px rgba(22, 163, 74, 0.8); }
+        .tile-val-1024 { background: linear-gradient(135deg, #2dd4bf, #0d9488); color: #ffffff; box-shadow: 0 0 32px rgba(13, 148, 136, 0.9); }
+        .tile-val-2048 { 
+            background: linear-gradient(135deg, #38ef7d, #11998e); 
+            color: #ffffff; 
+            box-shadow: 0 0 40px rgba(56, 239, 125, 1);
+            animation: pulse-glow 1.5s infinite alternate;
+        }
+        .tile-val-4096 { 
+            background: linear-gradient(135deg, #ff007f, #7928ca, #4338ca); 
+            color: #ffffff; 
+            box-shadow: 0 0 45px rgba(255, 0, 127, 0.9);
+            animation: pulse-glow 1.2s infinite alternate;
+        }
+
+        @keyframes pulse-glow {
+            0% { transform: scale(1); filter: brightness(1); }
+            100% { transform: scale(1.03); filter: brightness(1.25); }
+        }
+
+        /* Screen Shake effect */
+        .shake {
+            animation: shake-anim 0.35s cubic-bezier(.36,.07,.19,.97) both;
+        }
+
+        @keyframes shake-anim {
+            10%, 90% { transform: translate3d(-2px, 0, 0); }
+            20%, 80% { transform: translate3d(4px, 0, 0); }
+            30%, 50%, 70% { transform: translate3d(-6px, 0, 0); }
+            40%, 60% { transform: translate3d(6px, 0, 0); }
+        }
+
+        /* Custom Scrollbars */
+        ::-webkit-scrollbar {
+            width: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: rgba(15, 23, 42, 0.6);
+        }
+        ::-webkit-scrollbar-thumb {
+            background: rgba(100, 116, 139, 0.5);
+            border-radius: 4px;
+        }
+    </style>
+</head>
+<body class="flex flex-col items-center justify-between min-h-screen p-2 sm:p-4 select-none">
+
+    <!-- Header Stats Bar -->
+    <header class="w-full max-w-md flex items-center justify-between gap-2 mb-2 z-10">
+        <!-- Brand / Title -->
+        <div class="flex items-center gap-2">
+            <div class="w-9 h-9 rounded-xl bg-gradient-to-tr from-cyan-500 to-indigo-500 flex items-center justify-center shadow-lg shadow-cyan-500/30">
+                <i class="fa-solid fa-cubes-stacked text-white text-lg"></i>
+            </div>
+            <div>
+                <h1 class="text-xl font-black tracking-wider leading-none bg-gradient-to-r from-cyan-400 to-indigo-300 bg-clip-text text-transparent">
+                    2048 <span class="text-xs font-semibold px-1.5 py-0.5 rounded bg-cyan-950 text-cyan-400 border border-cyan-800/50 uppercase">Shooter</span>
+                </h1>
+                <p class="text-[10px] text-slate-400">Ceiling Drop Merge Arcade</p>
+            </div>
+        </div>
+
+        <!-- Controls / Buttons -->
+        <div class="flex items-center gap-2">
+            <button id="soundToggleBtn" class="w-9 h-9 rounded-xl glass-panel flex items-center justify-center text-slate-300 hover:text-white transition active:scale-95" title="Toggle Sound">
+                <i id="soundIcon" class="fa-solid fa-volume-high text-sm"></i>
+            </button>
+            <button id="helpBtn" class="w-9 h-9 rounded-xl glass-panel flex items-center justify-center text-slate-300 hover:text-white transition active:scale-95" title="Rules">
+                <i class="fa-solid fa-circle-info text-sm"></i>
+            </button>
+            <button id="restartBtn" class="w-9 h-9 rounded-xl glass-panel flex items-center justify-center text-slate-300 hover:text-white transition active:scale-95" title="Restart Game">
+                <i class="fa-solid fa-rotate-right text-sm"></i>
+            </button>
+        </div>
+    </header>
+
+    <!-- Score & High Score Row -->
+    <div class="w-full max-w-md grid grid-cols-2 gap-3 mb-2 z-10">
+        <div class="glass-panel p-2.5 rounded-2xl flex flex-col items-center justify-center border-slate-700/50">
+            <span class="text-[10px] uppercase font-bold tracking-widest text-slate-400">Score</span>
+            <span id="currentScore" class="text-2xl font-black text-cyan-300 tracking-tight">0</span>
+        </div>
+        <div class="glass-panel p-2.5 rounded-2xl flex flex-col items-center justify-center border-slate-700/50">
+            <span class="text-[10px] uppercase font-bold tracking-widest text-slate-400">Best</span>
+            <span id="highScore" class="text-2xl font-black text-amber-400 tracking-tight">0</span>
+        </div>
+    </div>
+
+    <!-- Main Game Board Container -->
+    <main id="gameWrapper" class="relative w-full max-w-md flex-1 flex flex-col items-center justify-center my-auto">
+        
+        <!-- Game Canvas Box -->
+        <div id="canvasContainer" class="relative w-full aspect-[5/7.5] glass-panel rounded-3xl overflow-hidden border border-slate-700/60 shadow-2xl flex flex-col items-center justify-center">
+            
+            <!-- Canvas Layer for Background Grid, Aiming Ray, Ghost Tiles, Animations, Particles -->
+            <canvas id="gameCanvas" class="absolute inset-0 w-full h-full cursor-pointer touch-none"></canvas>
+
+            <!-- Danger Warning Top Bar -->
+            <div id="dangerBanner" class="absolute top-2 inset-x-3 py-1 bg-red-500/20 border border-red-500/40 rounded-xl flex items-center justify-between px-3 text-red-300 text-xs font-semibold opacity-0 transition-opacity duration-300 pointer-events-none">
+                <span class="flex items-center gap-1.5"><i class="fa-solid fa-triangle-exclamation animate-bounce"></i> Drop Warning!</span>
+                <span id="dangerShotsLeft" class="font-bold">2 shots</span>
+            </div>
+
+            <!-- Combo / Floating Multiplier Overlay Container -->
+            <div id="floatingOverlay" class="absolute inset-0 pointer-events-none overflow-hidden"></div>
+
+            <!-- Game Over Overlay -->
+            <div id="gameOverModal" class="absolute inset-0 bg-slate-950/85 backdrop-blur-md flex flex-col items-center justify-center p-6 text-center z-30 opacity-0 pointer-events-none transition-opacity duration-300">
+                <div class="w-16 h-16 rounded-3xl bg-red-500/20 border border-red-500/40 flex items-center justify-center text-red-400 mb-4 text-3xl shadow-lg shadow-red-500/20 animate-bounce">
+                    <i class="fa-solid fa-skull"></i>
+                </div>
+                <h2 class="text-3xl font-black text-white mb-1">GAME OVER</h2>
+                <p class="text-sm text-slate-400 mb-6">The tiles reached the bottom ceiling threshold!</p>
+
+                <div class="w-full max-w-xs glass-panel rounded-2xl p-4 mb-6 space-y-2 text-left">
+                    <div class="flex justify-between items-center">
+                        <span class="text-xs text-slate-400 uppercase font-semibold">Final Score</span>
+                        <span id="finalScore" class="text-xl font-extrabold text-cyan-300">0</span>
+                    </div>
+                    <div class="flex justify-between items-center">
+                        <span class="text-xs text-slate-400 uppercase font-semibold">Highest Tile</span>
+                        <span id="highestTile" class="text-xl font-extrabold text-amber-400">0</span>
+                    </div>
+                </div>
+
+                <button id="modalRestartBtn" class="w-full max-w-xs py-3.5 px-6 rounded-xl bg-gradient-to-r from-cyan-500 to-indigo-600 hover:from-cyan-400 hover:to-indigo-500 text-white font-extrabold shadow-lg shadow-cyan-500/30 transition transform active:scale-95 flex items-center justify-center gap-2">
+                    <i class="fa-solid fa-play text-sm"></i> Play Again
+                </button>
+            </div>
+
+            <!-- Rules / How to Play Modal Overlay -->
+            <div id="rulesModal" class="absolute inset-0 bg-slate-950/90 backdrop-blur-md p-6 text-left z-40 opacity-0 pointer-events-none transition-opacity duration-300 flex flex-col justify-between">
+                <div>
+                    <div class="flex items-center justify-between mb-4">
+                        <h3 class="text-xl font-black text-cyan-300 flex items-center gap-2">
+                            <i class="fa-solid fa-book-open"></i> How To Play
+                        </h3>
+                        <button id="closeRulesBtn" class="w-8 h-8 rounded-full glass-panel flex items-center justify-center text-slate-400 hover:text-white">
+                            <i class="fa-solid fa-xmark"></i>
+                        </button>
+                    </div>
+
+                    <div class="space-y-3 text-xs sm:text-sm text-slate-300 overflow-y-auto max-h-[60vh] pr-1">
+                        <div class="flex gap-3 items-start">
+                            <div class="w-6 h-6 rounded-full bg-cyan-500/20 text-cyan-400 flex items-center justify-center font-bold text-xs shrink-0 mt-0.5">1</div>
+                            <p><strong class="text-white">Aim & Fire:</strong> Move mouse or drag finger to aim across the 5 columns. Tap/Click or press <kbd class="px-1.5 py-0.5 rounded bg-slate-800 border border-slate-700 text-cyan-300">Space</kbd> / <kbd class="px-1.5 py-0.5 rounded bg-slate-800 border border-slate-700 text-cyan-300">Up Arrow</kbd> to launch your tile upwards.</p>
+                        </div>
+                        <div class="flex gap-3 items-start">
+                            <div class="w-6 h-6 rounded-full bg-cyan-500/20 text-cyan-400 flex items-center justify-center font-bold text-xs shrink-0 mt-0.5">2</div>
+                            <p><strong class="text-white">Merge Rules:</strong> Match equal numbers adjacent (above, below, left, right) to double them (e.g. 4+4=8). Joining 3 at once doubles twice!</p>
+                        </div>
+                        <div class="flex gap-3 items-start">
+                            <div class="w-6 h-6 rounded-full bg-cyan-500/20 text-cyan-400 flex items-center justify-center font-bold text-xs shrink-0 mt-0.5">3</div>
+                            <p><strong class="text-white">Chain Combos:</strong> Disconnected tiles slide up after merges. Secondary matches trigger multiplier combos (2x, 3x, 4x score!).</p>
+                        </div>
+                        <div class="flex gap-3 items-start">
+                            <div class="w-6 h-6 rounded-full bg-cyan-500/20 text-cyan-400 flex items-center justify-center font-bold text-xs shrink-0 mt-0.5">4</div>
+                            <p><strong class="text-white">Ceiling Drop:</strong> Every 8 shots, a fresh row pushes down from above. Don't let tiles cross the bottom line!</p>
+                        </div>
+                    </div>
+                </div>
+
+                <button id="gotItBtn" class="w-full py-3 rounded-xl bg-cyan-500 text-slate-950 font-black hover:bg-cyan-400 transition">
+                    Got It!
+                </button>
+            </div>
+
+        </div>
+
+        <!-- Lower Control & Next Tile Dashboard -->
+        <div class="w-full mt-3 flex items-center justify-between px-2 gap-4">
+            <!-- Next Tile Preview -->
+            <div class="glass-panel px-4 py-2 rounded-2xl flex items-center gap-3 border-slate-700/50">
+                <span class="text-[10px] font-bold uppercase tracking-wider text-slate-400">Next</span>
+                <div id="nextTileBox" class="w-10 h-10 rounded-xl flex items-center justify-center font-black text-sm text-white shadow-md transition-all duration-300 scale-100">
+                    2
+                </div>
+            </div>
+
+            <!-- Drop Counter Meter -->
+            <div class="glass-panel px-4 py-2 rounded-2xl flex items-center gap-3 border-slate-700/50 flex-1 justify-end">
+                <div class="flex flex-col items-end">
+                    <span class="text-[10px] font-bold uppercase tracking-wider text-slate-400">Ceiling Drop</span>
+                    <span id="shotsCounter" class="text-xs font-extrabold text-cyan-300">8 Shots Left</span>
+                </div>
+                <div class="w-8 h-8 rounded-xl bg-slate-800/80 border border-slate-700 flex items-center justify-center text-amber-400">
+                    <i class="fa-solid fa-angles-down text-xs"></i>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Footer Controls Bar (Mobile Arrow Keys Touch Fallback) -->
+    <footer class="w-full max-w-md my-2 flex items-center justify-center gap-4 text-xs text-slate-400">
+        <div class="hidden sm:flex items-center gap-2">
+            <span class="px-2 py-1 rounded bg-slate-800 border border-slate-700 text-slate-300 font-mono"><i class="fa-solid fa-arrow-left"></i> / <i class="fa-solid fa-arrow-right"></i></span> Move
+            <span class="px-2 py-1 rounded bg-slate-800 border border-slate-700 text-slate-300 font-mono">Space</span> Fire
+        </div>
+        <div class="sm:hidden flex items-center justify-center gap-3 w-full">
+            <button id="btnLeft" class="flex-1 py-2 rounded-xl glass-panel text-slate-200 active:bg-cyan-500/20 active:text-cyan-300 flex items-center justify-center">
+                <i class="fa-solid fa-arrow-left text-base"></i>
+            </button>
+            <button id="btnFire" class="flex-2 py-2 px-6 rounded-xl bg-cyan-500/20 border border-cyan-500/40 text-cyan-300 font-bold active:bg-cyan-500 active:text-slate-950 flex items-center justify-center gap-2">
+                <i class="fa-solid fa-fire text-sm"></i> FIRE
+            </button>
+            <button id="btnRight" class="flex-1 py-2 rounded-xl glass-panel text-slate-200 active:bg-cyan-500/20 active:text-cyan-300 flex items-center justify-center">
+                <i class="fa-solid fa-arrow-right text-base"></i>
+            </button>
+        </div>
+    </footer>
+
+    <!-- JavaScript Game Logic -->
+    <script>
+        // --- SOUND ENGINE (Web Audio API) ---
+        class SoundEngine {
+            constructor() {
+                this.ctx = null;
+                this.muted = false;
+            }
+
+            init() {
+                if (!this.ctx) {
+                    const AudioContext = window.AudioContext || window.webkitAudioContext;
+                    if (AudioContext) {
+                        this.ctx = new AudioContext();
+                    }
+                }
+                if (this.ctx && this.ctx.state === 'suspended') {
+                    this.ctx.resume();
+                }
+            }
+
+            playShoot() {
+                if (this.muted || !this.ctx) return;
+                try {
+                    const osc = this.ctx.createOscillator();
+                    const gain = this.ctx.createGain();
+                    osc.type = 'sine';
+                    osc.frequency.setValueAtTime(300, this.ctx.currentTime);
+                    osc.frequency.exponentialRampToValueAtTime(700, this.ctx.currentTime + 0.08);
+                    
+                    gain.gain.setValueAtTime(0.2, this.ctx.currentTime);
+                    gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + 0.08);
+
+                    osc.connect(gain);
+                    gain.connect(this.ctx.destination);
+
+                    osc.start();
+                    osc.stop(this.ctx.currentTime + 0.08);
+                } catch(e) {}
+            }
+
+            playMerge(chainCount = 1) {
+                if (this.muted || !this.ctx) return;
+                try {
+                    const osc = this.ctx.createOscillator();
+                    const gain = this.ctx.createGain();
+                    osc.type = 'triangle';
+
+                    const baseFreq = 220 + (chainCount * 80);
+                    osc.frequency.setValueAtTime(baseFreq, this.ctx.currentTime);
+                    osc.frequency.exponentialRampToValueAtTime(baseFreq * 1.8, this.ctx.currentTime + 0.15);
+
+                    gain.gain.setValueAtTime(0.3, this.ctx.currentTime);
+                    gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + 0.15);
+
+                    osc.connect(gain);
+                    gain.connect(this.ctx.destination);
+
+                    osc.start();
+                    osc.stop(this.ctx.currentTime + 0.15);
+                } catch(e) {}
+            }
+
+            playDropWarning() {
+                if (this.muted || !this.ctx) return;
+                try {
+                    const osc = this.ctx.createOscillator();
+                    const gain = this.ctx.createGain();
+                    osc.type = 'sawtooth';
+                    osc.frequency.setValueAtTime(150, this.ctx.currentTime);
+                    osc.frequency.linearRampToValueAtTime(80, this.ctx.currentTime + 0.25);
+
+                    gain.gain.setValueAtTime(0.15, this.ctx.currentTime);
+                    gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + 0.25);
+
+                    osc.connect(gain);
+                    gain.connect(this.ctx.destination);
+
+                    osc.start();
+                    osc.stop(this.ctx.currentTime + 0.25);
+                } catch(e) {}
+            }
+
+            playGameOver() {
+                if (this.muted || !this.ctx) return;
+                try {
+                    const osc = this.ctx.createOscillator();
+                    const gain = this.ctx.createGain();
+                    osc.type = 'sawtooth';
+                    osc.frequency.setValueAtTime(300, this.ctx.currentTime);
+                    osc.frequency.exponentialRampToValueAtTime(60, this.ctx.currentTime + 0.6);
+
+                    gain.gain.setValueAtTime(0.3, this.ctx.currentTime);
+                    gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + 0.6);
+
+                    osc.connect(gain);
+                    gain.connect(this.ctx.destination);
+
+                    osc.start();
+                    osc.stop(this.ctx.currentTime + 0.6);
+                } catch(e) {}
+            }
+        }
+
+        // --- CONSTANTS & CONFIGS ---
+        const COLS = 5;
+        const ROWS = 7;
+        const SHOTS_PER_DROP = 8;
+
+        // Tile colors for canvas rendering
+        const TILE_COLORS = {
+            2:    { bg: ['#e2e8f0', '#94a3b8'], text: '#0f172a', border: '#cbd5e1' },
+            4:    { bg: ['#a5f3fc', '#06b6d4'], text: '#0f172a', border: '#67e8f9' },
+            8:    { bg: ['#38bdf8', '#0284c7'], text: '#ffffff', border: '#7dd3fc' },
+            16:   { bg: ['#818cf8', '#4f46e5'], text: '#ffffff', border: '#a5b4fc' },
+            32:   { bg: ['#c084fc', '#9333ea'], text: '#ffffff', border: '#d8b4fe' },
+            64:   { bg: ['#f472b6', '#db2777'], text: '#ffffff', border: '#fbcfe8' },
+            128:  { bg: ['#fb923c', '#ea580c'], text: '#ffffff', border: '#ffedd5' },
+            256:  { bg: ['#facc15', '#ca8a04'], text: '#0f172a', border: '#fef08a' },
+            512:  { bg: ['#4ade80', '#16a34a'], text: '#0f172a', border: '#bbf7d0' },
+            1024: { bg: ['#2dd4bf', '#0d9488'], text: '#ffffff', border: '#99f6e4' },
+            2048: { bg: ['#38ef7d', '#11998e'], text: '#ffffff', border: '#a7f3d0' },
+            4096: { bg: ['#ff007f', '#7928ca'], text: '#ffffff', border: '#f472b6' }
+        };
+
+        // --- GAME STATE ---
+        const sound = new SoundEngine();
+
+        let canvas, ctx;
+        let cellWidth = 0;
+        let cellHeight = 0;
+
+        // Grid storage: grid[r][c] = value (or null)
+        let grid = Array(ROWS).fill(null).map(() => Array(COLS).fill(null));
+
+        let currentAimCol = 2; // 0 to 4
+        let currentShooterValue = 2;
+        let nextShooterValue = 4;
+
+        let shotsUntilDrop = SHOTS_PER_DROP;
+        let score = 0;
+        let highScore = parseInt(localStorage.getItem('2048_shooter_highscore') || '0', 10);
+        let isGameOver = false;
+
+        // Active projectile animation
+        let activeBullet = null; // { col, x, y, targetY, value, speed }
+
+        // Animations state
+        let particles = [];
+        let floatingTexts = [];
+        let mergingTiles = []; // list of tiles undergoing scale/pop effect
+        let slidingTiles = []; // list of tiles sliding up
+
+        // Timers & Flags
+        let isProcessingChain = false;
+
+        // Initialize Canvas & Game
+        window.addEventListener('DOMContentLoaded', () => {
+            canvas = document.getElementById('gameCanvas');
+            ctx = canvas.getContext('2d');
+
+            resizeCanvas();
+            window.addEventListener('resize', resizeCanvas);
+
+            setupEventListeners();
+            initGame();
+
+            document.getElementById('highScore').textContent = highScore;
+
+            // Start Animation Loop
+            requestAnimationFrame(gameLoop);
+        });
+
+        function resizeCanvas() {
+            const container = document.getElementById('canvasContainer');
+            const rect = container.getBoundingClientRect();
+            canvas.width = rect.width * window.devicePixelRatio;
+            canvas.height = rect.height * window.devicePixelRatio;
+
+            cellWidth = canvas.width / COLS;
+            cellHeight = canvas.height / ROWS;
+        }
+
+        // --- GAME INITIALIZATION ---
+        function initGame() {
+            grid = Array(ROWS).fill(null).map(() => Array(COLS).fill(null));
+
+            // Start completely clean with 0 initial rows hanging from the ceiling
+            score = 0;
+            shotsUntilDrop = SHOTS_PER_DROP;
+            isGameOver = false;
+            activeBullet = null;
+            particles = [];
+            floatingTexts = [];
+            mergingTiles = [];
+            slidingTiles = [];
+            isProcessingChain = false;
+
+            currentAimCol = 2;
+            currentShooterValue = getRandomTileValue();
+            nextShooterValue = getRandomTileValue();
+
+            updateUI();
+            hideGameOverModal();
+        }
+
+        function getRandomTileValue(allowedList = null) {
+            if (allowedList) {
+                return allowedList[Math.floor(Math.random() * allowedList.length)];
+            }
+            // Dynamic probability based on current highest tile on grid
+            let highestOnGrid = 2;
+            for (let r = 0; r < ROWS; r++) {
+                for (let c = 0; c < COLS; c++) {
+                    if (grid[r][c] && grid[r][c] > highestOnGrid) {
+                        highestOnGrid = grid[r][c];
+                    }
+                }
+            }
+
+            const possible = [2, 4, 8, 16];
+            if (highestOnGrid >= 64) possible.push(32);
+            if (highestOnGrid >= 256) possible.push(64);
+
+            const weights = [50, 30, 12, 5, 2, 1].slice(0, possible.length);
+            const totalWeight = weights.reduce((a, b) => a + b, 0);
+            let rand = Math.random() * totalWeight;
+
+            for (let i = 0; i < possible.length; i++) {
+                if (rand < weights[i]) return possible[i];
+                rand -= weights[i];
+            }
+            return 2;
+        }
+
+        // --- EVENT LISTENERS ---
+        function setupEventListeners() {
+            const container = document.getElementById('canvasContainer');
+
+            // Mouse Aiming & Shooting
+            container.addEventListener('mousemove', (e) => {
+                sound.init();
+                if (isGameOver || activeBullet) return;
+                const rect = canvas.getBoundingClientRect();
+                const mouseX = e.clientX - rect.left;
+                const col = Math.floor((mouseX / rect.width) * COLS);
+                currentAimCol = Math.max(0, Math.min(COLS - 1, col));
+            });
+
+            container.addEventListener('click', (e) => {
+                sound.init();
+                fireTile();
+            });
+
+            // Touch Drag Aiming & Touch Release Shooting
+            let touchStartX = 0;
+            container.addEventListener('touchstart', (e) => {
+                sound.init();
+                if (e.touches.length > 0) {
+                    touchStartX = e.touches[0].clientX;
+                    updateAimFromTouch(e.touches[0]);
+                }
+            }, { passive: true });
+
+            container.addEventListener('touchmove', (e) => {
+                if (e.touches.length > 0) {
+                    updateAimFromTouch(e.touches[0]);
+                }
+            }, { passive: true });
+
+            container.addEventListener('touchend', (e) => {
+                fireTile();
+            });
+
+            // Keyboard Controls
+            window.addEventListener('keydown', (e) => {
+                sound.init();
+                if (isGameOver) return;
+                if (e.key === 'ArrowLeft' || e.key === 'a' || e.key === 'A') {
+                    currentAimCol = Math.max(0, currentAimCol - 1);
+                } else if (e.key === 'ArrowRight' || e.key === 'd' || e.key === 'D') {
+                    currentAimCol = Math.min(COLS - 1, currentAimCol + 1);
+                } else if (e.key === ' ' || e.key === 'ArrowUp' || e.key === 'w' || e.key === 'W') {
+                    e.preventDefault();
+                    fireTile();
+                }
+            });
+
+            // Onscreen Touch Controls
+            document.getElementById('btnLeft').addEventListener('click', (e) => {
+                e.stopPropagation();
+                sound.init();
+                currentAimCol = Math.max(0, currentAimCol - 1);
+            });
+            document.getElementById('btnRight').addEventListener('click', (e) => {
+                e.stopPropagation();
+                sound.init();
+                currentAimCol = Math.min(COLS - 1, currentAimCol + 1);
+            });
+            document.getElementById('btnFire').addEventListener('click', (e) => {
+                e.stopPropagation();
+                sound.init();
+                fireTile();
+            });
+
+            // Top Control Buttons
+            document.getElementById('restartBtn').addEventListener('click', initGame);
+            document.getElementById('modalRestartBtn').addEventListener('click', initGame);
+
+            document.getElementById('soundToggleBtn').addEventListener('click', () => {
+                sound.muted = !sound.muted;
+                const icon = document.getElementById('soundIcon');
+                if (sound.muted) {
+                    icon.className = "fa-solid fa-volume-xmark text-red-400 text-sm";
+                } else {
+                    icon.className = "fa-solid fa-volume-high text-sm";
+                }
+            });
+
+            // Rules Modal Toggle
+            const rulesModal = document.getElementById('rulesModal');
+            document.getElementById('helpBtn').addEventListener('click', () => {
+                rulesModal.classList.remove('opacity-0', 'pointer-events-none');
+            });
+            document.getElementById('closeRulesBtn').addEventListener('click', () => {
+                rulesModal.classList.add('opacity-0', 'pointer-events-none');
+            });
+            document.getElementById('gotItBtn').addEventListener('click', () => {
+                rulesModal.classList.add('opacity-0', 'pointer-events-none');
+            });
+        }
+
+        function updateAimFromTouch(touch) {
+            const rect = canvas.getBoundingClientRect();
+            const touchX = touch.clientX - rect.left;
+            const col = Math.floor((touchX / rect.width) * COLS);
+            currentAimCol = Math.max(0, Math.min(COLS - 1, col));
+        }
+
+        // --- SHOOTING & LOGIC ---
+        function fireTile() {
+            if (isGameOver || activeBullet || isProcessingChain) return;
+
+            // Find landing spot in currentAimCol
+            const landingRow = getLowestOpenRow(currentAimCol);
+
+            // If column is totally full (below bottom row)
+            if (landingRow >= ROWS) {
+                triggerGameOver();
+                return;
+            }
+
+            sound.playShoot();
+
+            const startX = (currentAimCol + 0.5) * cellWidth;
+            const startY = (ROWS - 0.5) * cellHeight;
+            const targetY = (landingRow + 0.5) * cellHeight;
+
+            activeBullet = {
+                col: currentAimCol,
+                row: landingRow,
+                x: startX,
+                y: startY,
+                targetY: targetY,
+                value: currentShooterValue,
+                speed: cellHeight * 28 // velocity per sec
+            };
+
+            // Rotate Next Tile
+            currentShooterValue = nextShooterValue;
+            nextShooterValue = getRandomTileValue();
+            updateUI();
+
+            // Decrement Drop Counter
+            shotsUntilDrop--;
+            if (shotsUntilDrop <= 0) {
+                shotsUntilDrop = SHOTS_PER_DROP;
+                setTimeout(() => pushCeilingDrop(), 400);
+            } else if (shotsUntilDrop <= 2) {
+                sound.playDropWarning();
+            }
+            updateUI();
+        }
+
+        function getLowestOpenRow(col) {
+            // Hanging ceiling: find first empty cell starting from top row 0 down to ROWS-1
+            for (let r = 0; r < ROWS; r++) {
+                if (grid[r][col] === null) {
+                    return r;
+                }
+            }
+            return ROWS; // Full column
+        }
+
+        // --- MERGING & CHAIN CASCADE ---
+        function processTileLanding(col, row, val) {
+            grid[row][col] = val;
+            activeBullet = null;
+
+            // Check for immediate game over if filled up to row 7
+            if (isColumnOverflowed()) {
+                triggerGameOver();
+                return;
+            }
+
+            // Start cascade merge checks
+            isProcessingChain = true;
+            evaluateCascadeMerges(1);
+        }
+
+        function evaluateCascadeMerges(chainStep = 1) {
+            let mergedAny = false;
+            let visited = Array(ROWS).fill(null).map(() => Array(COLS).fill(false));
+
+            for (let r = 0; r < ROWS; r++) {
+                for (let c = 0; c < COLS; c++) {
+                    if (grid[r][c] !== null && !visited[r][c]) {
+                        const targetVal = grid[r][c];
+                        const group = findConnectedMatchingTiles(r, c, targetVal);
+
+                        if (group.length >= 2) {
+                            mergedAny = true;
+                            
+                            // Mark visited
+                            group.forEach(pt => visited[pt.r][pt.c] = true);
+
+                            // Choose epicenter (top-most, left-most or closest to center)
+                            const epicenter = group[0];
+                            let newVal = targetVal * 2;
+                            if (group.length >= 3) {
+                                newVal = targetVal * 4; // Join 3 at once -> doubles twice!
+                            }
+
+                            // Calculate Score
+                            const points = newVal * group.length * chainStep;
+                            score += points;
+
+                            // Sound & Particle visual effects
+                            sound.playMerge(chainStep);
+                            createMergeParticles(
+                                (epicenter.c + 0.5) * cellWidth,
+                                (epicenter.r + 0.5) * cellHeight,
+                                newVal
+                            );
+
+                            // Floating text score
+                            const textStr = chainStep > 1 ? `+${points} (${chainStep}x Combo!)` : `+${points}`;
+                            addFloatingText(
+                                (epicenter.c + 0.5) * cellWidth,
+                                (epicenter.r + 0.5) * cellHeight,
+                                textStr,
+                                chainStep > 1 ? '#facc15' : '#38bdf8'
+                            );
+
+                            // Clear group and set epicenter
+                            group.forEach(pt => { grid[pt.r][pt.c] = null; });
+                            grid[epicenter.r][epicenter.c] = newVal;
+
+                            // Visual pop trigger
+                            mergingTiles.push({ r: epicenter.r, c: epicenter.c, scale: 1.4 });
+
+                            // Trigger screen shake for huge combos
+                            if (newVal >= 2048 || chainStep >= 3) {
+                                triggerScreenShake();
+                            }
+                        }
+                    }
+                }
+            }
+
+            if (mergedAny) {
+                updateUI();
+                // After merges, apply gravity (tiles slide UP towards ceiling)
+                setTimeout(() => {
+                    applyGravityUpwards();
+                    // Evaluate next step in cascade chain
+                    setTimeout(() => {
+                        evaluateCascadeMerges(chainStep + 1);
+                    }, 180);
+                }, 150);
+            } else {
+                isProcessingChain = false;
+                // Check win/overflow post-cascade
+                if (isColumnOverflowed()) {
+                    triggerGameOver();
+                }
+            }
+        }
+
+        // Flood Fill algorithm for adjacent matching tiles
+        function findConnectedMatchingTiles(startR, startC, targetVal) {
+            const matches = [];
+            const queue = [{ r: startR, c: startC }];
+            const seen = Array(ROWS).fill(null).map(() => Array(COLS).fill(false));
+            seen[startR][startC] = true;
+
+            const directions = [[-1, 0], [1, 0], [0, -1], [0, 1]];
+
+            while (queue.length > 0) {
+                const { r, c } = queue.shift();
+                matches.push({ r, c });
+
+                for (let [dr, dc] of directions) {
+                    const nr = r + dr;
+                    const nc = c + dc;
+
+                    if (nr >= 0 && nr < ROWS && nc >= 0 && nc < COLS) {
+                        if (!seen[nr][nc] && grid[nr][nc] === targetVal) {
+                            seen[nr][nc] = true;
+                            queue.push({ r: nr, c: nc });
+                        }
+                    }
+                }
+            }
+            return matches;
+        }
+
+        // Hanging Ceiling Gravity: Disconnected or lower tiles slide UP toward ceiling to fill gaps
+        function applyGravityUpwards() {
+            for (let c = 0; c < COLS; c++) {
+                let writeRow = 0;
+                for (let r = 0; r < ROWS; r++) {
+                    if (grid[r][c] !== null) {
+                        if (writeRow !== r) {
+                            grid[writeRow][c] = grid[r][c];
+                            grid[r][c] = null;
+                        }
+                        writeRow++;
+                    }
+                }
+            }
+        }
+
+        // Ceiling Drop Hazard: New row of random tiles pushes down from above
+        function pushCeilingDrop() {
+            sound.playDropWarning();
+            triggerScreenShake();
+
+            // Check if bottom row contains tiles; if so, dropping row causes overflow
+            for (let c = 0; c < COLS; c++) {
+                if (grid[ROWS - 1][c] !== null) {
+                    triggerGameOver();
+                    return;
+                }
+            }
+
+            // Shift rows down
+            for (let r = ROWS - 1; r > 0; r--) {
+                for (let c = 0; c < COLS; c++) {
+                    grid[r][c] = grid[r - 1][c];
+                }
+            }
+
+            // Fill top row with new tiles
+            for (let c = 0; c < COLS; c++) {
+                grid[0][c] = getRandomTileValue([2, 4, 8, 16]);
+            }
+
+            addFloatingText(canvas.width / 2, cellHeight * 1.5, "CEILING DROP!", "#ef4444");
+
+            // Evaluate if new dropped row triggers instant merges
+            isProcessingChain = true;
+            evaluateCascadeMerges(1);
+        }
+
+        function isColumnOverflowed() {
+            // Check if any tile exists in the danger threshold bottom row or beyond
+            for (let c = 0; c < COLS; c++) {
+                if (grid[ROWS - 1][c] !== null) {
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        // --- VISUAL PREDICTION & AIMING ---
+        function getGhostTargetTile() {
+            if (activeBullet) return null;
+
+            const col = currentAimCol;
+            const targetRow = getLowestOpenRow(col);
+            if (targetRow >= ROWS) return null;
+
+            const val = currentShooterValue;
+
+            // Check adjacent matches for glow effect
+            const matches = [];
+            const directions = [[-1, 0], [1, 0], [0, -1], [0, 1]];
+
+            directions.forEach(([dr, dc]) => {
+                const nr = targetRow + dr;
+                const nc = col + dc;
+                if (nr >= 0 && nr < ROWS && nc >= 0 && nc < COLS) {
+                    if (grid[nr][nc] === val) {
+                        matches.push({ r: nr, c: nc });
+                    }
+                }
+            });
+
+            return {
+                col: col,
+                row: targetRow,
+                value: val,
+                matchingAdjacent: matches
+            };
+        }
+
+        // --- PARTICLE & UI EFFECTS ---
+        function createMergeParticles(x, y, value) {
+            const colorObj = TILE_COLORS[value] || TILE_COLORS[4096];
+            const color = colorObj.bg[0];
+
+            for (let i = 0; i < 18; i++) {
+                const angle = Math.random() * Math.PI * 2;
+                const speed = 2 + Math.random() * 6;
+                particles.push({
+                    x: x,
+                    y: y,
+                    vx: Math.cos(angle) * speed,
+                    vy: Math.sin(angle) * speed,
+                    radius: 3 + Math.random() * 4,
+                    color: color,
+                    alpha: 1,
+                    decay: 0.02 + Math.random() * 0.03
+                });
+            }
+        }
+
+        function addFloatingText(x, y, text, color = "#ffffff") {
+            floatingTexts.push({
+                x: x,
+                y: y,
+                text: text,
+                color: color,
+                alpha: 1,
+                vy: -1.5
+            });
+        }
+
+        function triggerScreenShake() {
+            const wrapper = document.getElementById('canvasContainer');
+            wrapper.classList.remove('shake');
+            void wrapper.offsetWidth; // force reflow
+            wrapper.classList.add('shake');
+        }
+
+        function updateUI() {
+            document.getElementById('currentScore').textContent = score;
+
+            if (score > highScore) {
+                highScore = score;
+                localStorage.setItem('2048_shooter_highscore', highScore);
+            }
+            document.getElementById('highScore').textContent = highScore;
+
+            // Update Next Tile Box
+            const nextBox = document.getElementById('nextTileBox');
+            nextBox.textContent = nextShooterValue;
+            nextBox.className = `w-10 h-10 rounded-xl flex items-center justify-center font-black text-sm text-white shadow-md transition-all duration-300 tile-val-${nextShooterValue}`;
+
+            // Shots Counter
+            const counterText = document.getElementById('shotsCounter');
+            const dangerBanner = document.getElementById('dangerBanner');
+            const dangerShotsLeft = document.getElementById('dangerShotsLeft');
+
+            counterText.textContent = `${shotsUntilDrop} ${shotsUntilDrop === 1 ? 'Shot' : 'Shots'} Left`;
+
+            if (shotsUntilDrop <= 2) {
+                counterText.className = "text-xs font-extrabold text-red-400 animate-pulse";
+                dangerBanner.classList.remove('opacity-0');
+                dangerShotsLeft.textContent = `${shotsUntilDrop} ${shotsUntilDrop === 1 ? 'shot' : 'shots'}`;
+            } else {
+                counterText.className = "text-xs font-extrabold text-cyan-300";
+                dangerBanner.classList.add('opacity-0');
+            }
+        }
+
+        function triggerGameOver() {
+            if (isGameOver) return;
+            isGameOver = true;
+            sound.playGameOver();
+
+            // Find highest tile
+            let highest = 0;
+            for (let r = 0; r < ROWS; r++) {
+                for (let c = 0; c < COLS; c++) {
+                    if (grid[r][c] && grid[r][c] > highest) {
+                        highest = grid[r][c];
+                    }
+                }
+            }
+
+            document.getElementById('finalScore').textContent = score;
+            document.getElementById('highestTile').textContent = highest;
+
+            const modal = document.getElementById('gameOverModal');
+            modal.classList.remove('opacity-0', 'pointer-events-none');
+        }
+
+        function hideGameOverModal() {
+            const modal = document.getElementById('gameOverModal');
+            modal.classList.add('opacity-0', 'pointer-events-none');
+        }
+
+        // --- RENDER & CANVAS GAME LOOP ---
+        let lastTime = performance.now();
+
+        function gameLoop(now) {
+            const dt = Math.min((now - lastTime) / 1000, 0.1);
+            lastTime = now;
+
+            updatePhysics(dt);
+            render();
+
+            requestAnimationFrame(gameLoop);
+        }
+
+        function updatePhysics(dt) {
+            // Active flying bullet tile
+            if (activeBullet) {
+                activeBullet.y -= activeBullet.speed * dt;
+
+                if (activeBullet.y <= activeBullet.targetY) {
+                    activeBullet.y = activeBullet.targetY;
+                    processTileLanding(activeBullet.col, activeBullet.row, activeBullet.value);
+                }
+            }
+
+            // Particles
+            for (let i = particles.length - 1; i >= 0; i--) {
+                const p = particles[i];
+                p.x += p.vx;
+                p.y += p.vy;
+                p.alpha -= p.decay;
+                if (p.alpha <= 0) particles.splice(i, 1);
+            }
+
+            // Floating score popups
+            for (let i = floatingTexts.length - 1; i >= 0; i--) {
+                const ft = floatingTexts[i];
+                ft.y += ft.vy;
+                ft.alpha -= 0.02;
+                if (ft.alpha <= 0) floatingTexts.splice(i, 1);
+            }
+
+            // Pop scaling animation
+            for (let i = mergingTiles.length - 1; i >= 0; i--) {
+                const m = mergingTiles[i];
+                m.scale -= dt * 2;
+                if (m.scale <= 1) mergingTiles.splice(i, 1);
+            }
+        }
+
+        function render() {
+            // Clear canvas
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            // Draw Background Grid
+            drawGridBackground();
+
+            // Draw Aiming Line & Prediction Ghost
+            const ghost = getGhostTargetTile();
+            if (ghost) {
+                drawAimingTrajectory(ghost);
+                drawGhostTile(ghost);
+            }
+
+            // Draw Ceiling Stationary Tiles
+            drawGridTiles(ghost);
+
+            // Draw Flying Projectile Tile
+            if (activeBullet) {
+                drawTileAt(activeBullet.x, activeBullet.y, activeBullet.value, 1.0, true);
+            }
+
+            // Draw Particles
+            particles.forEach(p => {
+                ctx.save();
+                ctx.globalAlpha = Math.max(0, p.alpha);
+                ctx.fillStyle = p.color;
+                ctx.beginPath();
+                ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.restore();
+            });
+
+            // Draw Floating Score & Combo Texts
+            floatingTexts.forEach(ft => {
+                ctx.save();
+                ctx.globalAlpha = Math.max(0, ft.alpha);
+                ctx.fillStyle = ft.color;
+                ctx.font = '900 18px Outfit, sans-serif';
+                ctx.textAlign = 'center';
+                ctx.shadowColor = 'rgba(0,0,0,0.8)';
+                ctx.shadowBlur = 6;
+                ctx.fillText(ft.text, ft.x, ft.y);
+                ctx.restore();
+            });
+
+            // Draw Shooter Base & Current Tile at Bottom
+            drawShooterBase();
+        }
+
+        function drawGridBackground() {
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.04)';
+            ctx.lineWidth = 1;
+
+            for (let r = 0; r <= ROWS; r++) {
+                ctx.beginPath();
+                ctx.moveTo(0, r * cellHeight);
+                ctx.lineTo(canvas.width, r * cellHeight);
+                ctx.stroke();
+            }
+
+            for (let c = 0; c <= COLS; c++) {
+                ctx.beginPath();
+                ctx.moveTo(c * cellWidth, 0);
+                ctx.lineTo(c * cellWidth, canvas.height);
+                ctx.stroke();
+            }
+
+            // Highlight Danger Line at bottom row 6
+            const dangerY = (ROWS - 1) * cellHeight;
+            ctx.strokeStyle = 'rgba(239, 68, 68, 0.25)';
+            ctx.setLineDash([6, 6]);
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.moveTo(0, dangerY);
+            ctx.lineTo(canvas.width, dangerY);
+            ctx.stroke();
+            ctx.setLineDash([]);
+        }
+
+        function drawAimingTrajectory(ghost) {
+            const startX = (currentAimCol + 0.5) * cellWidth;
+            const startY = (ROWS - 0.5) * cellHeight;
+            const targetY = (ghost.row + 0.5) * cellHeight;
+
+            // Laser Beam Line
+            ctx.save();
+            const grad = ctx.createLinearGradient(startX, startY, startX, targetY);
+            grad.addColorStop(0, 'rgba(6, 182, 212, 0.8)');
+            grad.addColorStop(1, 'rgba(6, 182, 212, 0.1)');
+
+            ctx.strokeStyle = grad;
+            ctx.lineWidth = 3;
+            ctx.setLineDash([8, 8]);
+            ctx.beginPath();
+            ctx.moveTo(startX, startY);
+            ctx.lineTo(startX, targetY);
+            ctx.stroke();
+            ctx.restore();
+        }
+
+        function drawGhostTile(ghost) {
+            const x = (ghost.col + 0.5) * cellWidth;
+            const y = (ghost.row + 0.5) * cellHeight;
+            const size = Math.min(cellWidth, cellHeight) * 0.86;
+
+            ctx.save();
+            ctx.translate(x, y);
+
+            // Dashed outline
+            ctx.strokeStyle = 'rgba(6, 182, 212, 0.7)';
+            ctx.lineWidth = 2.5;
+            ctx.setLineDash([6, 4]);
+
+            roundRectPath(ctx, -size / 2, -size / 2, size, size, 14);
+            ctx.stroke();
+
+            // Value text translucent
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.4)';
+            ctx.font = '800 20px Outfit, sans-serif';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText(ghost.value, 0, 0);
+
+            ctx.restore();
+        }
+
+        function drawGridTiles(ghost) {
+            const matchingSet = new Set(ghost ? ghost.matchingAdjacent.map(m => `${m.r},${m.c}`) : []);
+
+            for (let r = 0; r < ROWS; r++) {
+                for (let c = 0; c < COLS; c++) {
+                    const val = grid[r][c];
+                    if (val !== null) {
+                        const x = (c + 0.5) * cellWidth;
+                        const y = (r + 0.5) * cellHeight;
+
+                        let scale = 1.0;
+                        const pop = mergingTiles.find(m => m.r === r && m.c === c);
+                        if (pop) scale = pop.scale;
+
+                        const isGlowing = matchingSet.has(`${r},${c}`);
+
+                        drawTileAt(x, y, val, scale, false, isGlowing);
+                    }
+                }
+            }
+        }
+
+        function drawShooterBase() {
+            if (activeBullet) return;
+
+            const x = (currentAimCol + 0.5) * cellWidth;
+            const y = (ROWS - 0.5) * cellHeight;
+
+            drawTileAt(x, y, currentShooterValue, 1.0, true);
+        }
+
+        function drawTileAt(x, y, value, scale = 1.0, isShooter = false, isGlowing = false) {
+            const size = Math.min(cellWidth, cellHeight) * 0.88 * scale;
+            const style = TILE_COLORS[value] || TILE_COLORS[4096];
+
+            ctx.save();
+            ctx.translate(x, y);
+
+            // Glowing indicator if matching ghost tile
+            if (isGlowing) {
+                ctx.shadowColor = style.border;
+                ctx.shadowBlur = 25;
+            } else {
+                ctx.shadowColor = 'rgba(0, 0, 0, 0.35)';
+                ctx.shadowBlur = 10;
+                ctx.shadowOffsetY = 4;
+            }
+
+            // Rounded Box Fill Gradient
+            const grad = ctx.createLinearGradient(-size / 2, -size / 2, size / 2, size / 2);
+            grad.addColorStop(0, style.bg[0]);
+            grad.addColorStop(1, style.bg[1]);
+
+            ctx.fillStyle = grad;
+            roundRectPath(ctx, -size / 2, -size / 2, size, size, 14);
+            ctx.fill();
+
+            // Inner Border Outline
+            ctx.strokeStyle = isGlowing ? '#ffffff' : style.border;
+            ctx.lineWidth = isGlowing ? 3 : 1.5;
+            ctx.stroke();
+
+            // Shooter Cannon Indicator Arrow
+            if (isShooter) {
+                ctx.fillStyle = style.text;
+                ctx.beginPath();
+                ctx.moveTo(0, -size / 2 + 6);
+                ctx.lineTo(-5, -size / 2 + 12);
+                ctx.lineTo(5, -size / 2 + 12);
+                ctx.closePath();
+                ctx.fill();
+            }
+
+            // Value Text
+            ctx.fillStyle = style.text;
+            ctx.shadowBlur = 0; // reset for crisp text
+            ctx.shadowOffsetY = 0;
+
+            const fontSize = value >= 1000 ? Math.floor(size * 0.3) : Math.floor(size * 0.38);
+            ctx.font = `900 ${fontSize}px Outfit, sans-serif`;
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText(value, 0, isShooter ? 2 : 0);
+
+            ctx.restore();
+        }
+
+        function roundRectPath(ctx, x, y, width, height, radius) {
+            ctx.beginPath();
+            ctx.moveTo(x + radius, y);
+            ctx.lineTo(x + width - radius, y);
+            ctx.quadraticCurveTo(x + width, y, x + width, y + radius);
+            ctx.lineTo(x + width, y + height - radius);
+            ctx.quadraticCurveTo(x + width, y + height, x + width - radius, y + height);
+            ctx.lineTo(x + radius, y + height);
+            ctx.quadraticCurveTo(x, y + height, x, y + height - radius);
+            ctx.lineTo(x, y + radius);
+            ctx.quadraticCurveTo(x, y, x + radius, y);
+            ctx.closePath();
+        }
+    </script>
+</body>
+</html>
